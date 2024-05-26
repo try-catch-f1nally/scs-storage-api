@@ -1,0 +1,48 @@
+{
+  "name": "scs-storage-api",
+  "version": "1.0.0",
+  "description": "Secure Cloud Storage Storage API",
+  "keywords": [],
+  "main": "index.js",
+  "type": "module",
+  "engines": {
+    "node": "18"
+  },
+  "scripts": {
+    "test": "echo \"No test command specified\"",
+    "start": "node --experimental-specifier-resolution=node ./dist/index.js",
+    "dev": "nodemon -L --experimentalSpecifierResolution=node ./src/index.ts",
+    "build": "rm -rf ./dist && tsc",
+    "lint": "eslint --ignore-path .gitignore ./src/**/*.ts",
+    "lint:fix": "eslint --ignore-path .gitignore --fix ./src/**/*.ts",
+    "format": "prettier --ignore-path .gitignore --ignore-unknown --check . && ec",
+    "format:fix": "prettier --ignore-path .gitignore --ignore-unknown --write . && ec",
+    "lintformatfix": "npm run lint:fix && npm run format:fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/try-catch-f1nally/scs-storage-api"
+  },
+  "author": "Mykyta Kulbanevych",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/try-catch-f1nally/scs-storage-api/issues"
+  },
+  "homepage": "https://github.com/try-catch-f1nally/scs-storage-api#readme",
+  "devDependencies": {
+    "@types/jsonwebtoken": "~9.0.6",
+    "@types/node": "~20.12.11",
+    "@typescript-eslint/eslint-plugin": "~7.8.0",
+    "@typescript-eslint/parser": "~7.8.0",
+    "editorconfig-checker": "~4.0.2",
+    "eslint": "~8.57.0",
+    "eslint-config-prettier": "~9.1.0",
+    "eslint-import-resolver-typescript": "~3.6.1",
+    "eslint-plugin-import": "~2.29.1",
+    "prettier": "~3.2.5",
+    "typescript": "~5.4.5"
+  },
+  "dependencies": {
+    "@try-catch-f1nally/express-microservice": "^3.0.0"
+  }
+}
