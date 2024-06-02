@@ -21,7 +21,7 @@ type UploadStartMessage = {key: 'start'; value: BaseUploadMessageValue};
 type UploadDataMessage = {key: 'data'; value: BaseUploadMessageValue & {data: string; orderNumber: number}};
 type UploadFinishMessage = {
   key: 'finish';
-  value: BaseUploadMessageValue & {chunkAmount: number; checksum: string; iv: string};
+  value: BaseUploadMessageValue & {chunkAmount: number; isTar: boolean; iv: string; checksum: string};
 };
 type UploadAbortMessage = {key: 'abort'; value: BaseUploadMessageValue};
 
@@ -76,15 +76,21 @@ export class StorageServiceImpl implements StorageService, Startable {
       throw new BadRequestError(`No archive with name "${archiveName}" found`);
     }
     this._sendArchive(archive).catch((err) => this._logger.error(`Error on sending archive "${archiveName}"`, err));
+    return {
+      isTar: archive.isTar,
+      iv: archive.iv,
+      checksum: archive.checksum
+    };
   }
 
   async _sendArchive(archive: Archive) {
-    const {userId, name: archiveName, checksum} = archive;
+    const {userId, name: archiveName} = archive;
     await this._kafkaProducer.send({
       topic: DOWNLOAD_TOPIC,
-      messages: [{key: 'start', value: JSON.stringify({userId, archiveName, checksum})}]
+      messages: [{key: 'start', value: JSON.stringify({userId, archiveName})}]
     });
-    for await (const chunk of fs.createReadStream(this._getArchivePath(userId, archiveName).filePath)) {
+    const {filePath} = this._getArchivePath(userId, archiveName);
+    for await (const chunk of fs.createReadStream(filePath)) {
       const data = (chunk as Buffer).toString('base64');
       await this._kafkaProducer.send({
         topic: DOWNLOAD_TOPIC,
@@ -121,7 +127,6 @@ export class StorageServiceImpl implements StorageService, Startable {
   async _handleUploadStart({userId, archiveName}: UploadStartMessage['value']) {
     await this._redisClient.set(this._getProcessedChunksRedisKey(userId, archiveName), 0);
     await fs.promises.mkdir(this._getArchivePath(userId, archiveName).dirPath, {recursive: true});
-    await this._archiveModel.create({userId, name: archiveName});
     await this._sendUploadAcknowledgeMessage('start', {userId, archiveName, status: 'success'});
     this._logger.debug(`Ready for handling upload of archive "${archiveName}"`);
   }
@@ -148,7 +153,7 @@ export class StorageServiceImpl implements StorageService, Startable {
     this._logger.debug(`Successfully handled chunk of archive "${archiveName}"`);
   }
 
-  async _handleUploadFinish({userId, archiveName, chunkAmount, checksum, iv}: UploadFinishMessage['value']) {
+  async _handleUploadFinish({userId, archiveName, chunkAmount, isTar, iv, checksum}: UploadFinishMessage['value']) {
     try {
       const processedChunks = +(await this._redisClient.getdel(this._getProcessedChunksRedisKey(userId, archiveName)))!;
       if (processedChunks !== chunkAmount) {
@@ -159,7 +164,7 @@ export class StorageServiceImpl implements StorageService, Startable {
         );
         return;
       }
-      await this._archiveModel.findOneAndUpdate({userId, name: archiveName}, {checksum, iv});
+      await this._archiveModel.create({userId, name: archiveName, isTar, iv, checksum});
       await this._sendUploadAcknowledgeMessage('finish', {userId, archiveName, status: 'ok'});
       this._logger.debug(`Successfully handled upload finish of archive "${archiveName}"`);
     } catch (error) {
@@ -176,8 +181,8 @@ export class StorageServiceImpl implements StorageService, Startable {
 
   async _cleanArchiveData(userId: string, archiveName: string) {
     await this._redisClient.del(this._getProcessedChunksRedisKey(userId, archiveName));
-    const archive = await this._archiveModel.findOneAndDelete({userId, name: archiveName});
-    const {filePath} = this._getArchivePath(archive!.userId, archive!.name);
+    await this._archiveModel.findOneAndDelete({userId, name: archiveName});
+    const {filePath} = this._getArchivePath(userId, archiveName);
     await fs.promises.rm(filePath, {recursive: true, force: true});
   }
 

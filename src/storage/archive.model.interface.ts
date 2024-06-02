@@ -3,8 +3,9 @@ import {Document, Model} from 'mongoose';
 export interface Archive {
   userId: string;
   name: string;
-  checksum?: string;
-  iv?: string;
+  isTar: boolean;
+  iv: string;
+  checksum: string;
   sizeInBytes: number;
   createdAt: Date;
 }

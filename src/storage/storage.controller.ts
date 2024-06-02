@@ -42,8 +42,8 @@ export class StorageController implements Controller {
   private async _initiateDownloading(req: Request, res: Response, next: NextFunction) {
     try {
       const {userId, archiveName} = req.params;
-      await this._storageService.initiateDownload(userId, archiveName);
-      return res.sendStatus(202);
+      const metadata = await this._storageService.initiateDownload(userId, archiveName);
+      return res.status(202).json(metadata);
     } catch (error) {
       next(error);
     }
