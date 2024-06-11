@@ -18,16 +18,8 @@ export class StorageController implements Controller {
 
   private _initializeRouter() {
     this.router.get('/archives', this._authMiddleware.middleware, this._getUserArchives.bind(this));
-    this.router.post(
-      '/archives/download/:userId/:archiveName',
-      this._authMiddleware.middleware,
-      this._initiateDownloading.bind(this)
-    );
-    this.router.delete(
-      '/archives/:userId/:archiveName',
-      this._authMiddleware.middleware,
-      this._deleteArchive.bind(this)
-    );
+    this.router.post('/archives/:name/download', this._authMiddleware.middleware, this._initiateDownloading.bind(this));
+    this.router.delete('/archives/:name', this._authMiddleware.middleware, this._deleteArchive.bind(this));
   }
 
   private async _getUserArchives(req: Request, res: Response, next: NextFunction) {
@@ -41,8 +33,7 @@ export class StorageController implements Controller {
 
   private async _initiateDownloading(req: Request, res: Response, next: NextFunction) {
     try {
-      const {userId, archiveName} = req.params;
-      const metadata = await this._storageService.initiateDownload(userId, archiveName);
+      const metadata = await this._storageService.initiateDownload(req.user!.id, req.params.name);
       return res.status(202).json(metadata);
     } catch (error) {
       next(error);
@@ -51,8 +42,7 @@ export class StorageController implements Controller {
 
   private async _deleteArchive(req: Request, res: Response, next: NextFunction) {
     try {
-      const {userId, archiveName} = req.params;
-      await this._storageService.deleteArchive(userId, archiveName);
+      await this._storageService.deleteArchive(req.user!.id, req.params.name);
       return res.sendStatus(204);
     } catch (error) {
       next(error);
